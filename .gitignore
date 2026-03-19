@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Logs
+*.log
+
+# Secrets — never commit these
+*.env
+.env
+*.pem
+*.key
+secrets/
+
+# Editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
