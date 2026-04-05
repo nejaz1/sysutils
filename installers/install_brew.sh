@@ -15,7 +15,7 @@ brew install git node pandoc pnpm uv
 brew install --cask audio-hijack loopback soundsource
 
 # Programming
-brew install --cask claude claude-code visual-studio-code 
+brew install --cask claude claude-code visual-studio-code cursor 
 
 # Security
 brew install --cask proton-drive proton-pass
