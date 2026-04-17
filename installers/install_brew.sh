@@ -8,24 +8,24 @@ set -e
 ###############################################################
 # Formulae
 # Programming languages
-brew install git node pandoc pnpm uv
+brew install git node pandoc pnpm pixi uv
 
 # Casks
 # Audio
 brew install --cask audio-hijack loopback soundsource
 
 # Programming
-brew install --cask claude claude-code visual-studio-code cursor 
+brew install --cask claude claude-code visual-studio-code cursor r rustup 
 
 # Security
 brew install --cask proton-drive proton-pass
 brew install protonpass/tap/pass-cli
 
 # Notes
-brew install --cask obsidian zotero granola
+brew install --cask zotero granola
 
 # System
-brew install --cask chronosync rectangle google-chrome
+brew install --cask chronosync rectangle google-chrome google-drive
 
 
 ###############################################################
