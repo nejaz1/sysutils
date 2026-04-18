@@ -1,0 +1,7 @@
+#!/bin/bash
+ln -s ~/Developer/sysutils/config/zsh/.zprofile ~/.zprofile
+ln -s ~/Developer/sysutils/config/zsh/.zshenv ~/.zshenv
+ln -s ~/Developer/sysutils/config/zsh/.zshrc ~/.zshrc
+ln -s ~/Developer/sysutils/config/ghostty/config.ghostty ~/Library/Application\ Support/com.mitchellh.ghostty/config.ghostty
+
+
