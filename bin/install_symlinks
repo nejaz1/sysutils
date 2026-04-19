@@ -1,7 +1,10 @@
-#!/bin/bash
+#!/bin/zsh
+set -euo pipefail
+
+# create symlinks for zsh configuration
 ln -s ~/Developer/sysutils/config/zsh/.zprofile ~/.zprofile
 ln -s ~/Developer/sysutils/config/zsh/.zshenv ~/.zshenv
 ln -s ~/Developer/sysutils/config/zsh/.zshrc ~/.zshrc
+
+# create symlink for ghostty configuration
 ln -s ~/Developer/sysutils/config/ghostty/config.ghostty ~/Library/Application\ Support/com.mitchellh.ghostty/config.ghostty
-
-
