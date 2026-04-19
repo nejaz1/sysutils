@@ -4,6 +4,7 @@ brew "sqlite"
 brew "node"
 brew "gitlab-ci-local"
 brew "glab"
+brew "mas"
 brew "mkdocs-material"
 brew "openspec"
 brew "pixi"
@@ -33,3 +34,7 @@ cask "rectangle"
 cask "soundsource"
 cask "visual-studio-code"
 cask "zotero"
+mas "iA Writer", id: 775737590
+mas "Keynote", id: 361285480
+mas "Proton Pass for Safari", id: 6502835663
+mas "The Unarchiver", id: 425424353
