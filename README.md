@@ -12,15 +12,14 @@ git clone git@github.com:nejaz1/sysutils.git ~/Developer/sysutils
 chmod +x ~/Developer/sysutils/bin/*
 ```
 
-## Running installers
-Use bash to run the installer
-```bash
-/bin/bash ~/Developer/sysutils/install_brew.sh
+## Creating symlinks
+Use the following command to create symlinks for various files (e.g. zsh, ghostty).
+```zsh
+install_symlinks
 ```
 
-## Running tools
-Simply run the tool e.g.
-```bash
+## Maintain brew
+Use the following command to update brew, cleanup unused packages, backup global brewfile, upgrade packages, identify config warnings.
+```zsh
 maintain_brew
 ```
-
