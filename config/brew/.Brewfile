@@ -1,4 +1,5 @@
 tap "protonpass/tap"
+brew "gh"
 brew "git"
 brew "sqlite"
 brew "node"
