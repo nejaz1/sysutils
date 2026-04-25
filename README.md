@@ -23,3 +23,10 @@ Use the following command to update brew, cleanup unused packages, backup global
 ```zsh
 maintain_brew
 ```
+
+## Sync data
+Use the following command to run rsync (including a flag for a dry sync) for music and data to an internal or external volume
+```zsh
+rsync_music internal --dry-run
+rsync_docs external
+```
