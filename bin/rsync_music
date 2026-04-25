@@ -1,0 +1,227 @@
+#!/usr/bin/env zsh
+# Syncs music production files internally (to DEST_INTERNAL) or externally (to DEST_EXTERNAL).
+# Usage: sync_music <internal|external> [--dry-run]
+
+set -euo pipefail
+
+BASE_INTERNAL=$HOME/Music
+BASE_EXTERNAL="/Volumes/Backup-External"
+
+DEST_INTERNAL=$BASE_INTERNAL/MyPreferences
+DEST_EXTERNAL="$BASE_EXTERNAL"
+
+# ── Argument parsing ──────────────────────────────────────────────────────────
+MODE=""
+DRY_RUN=0
+
+for arg in "$@"; do
+  case "$arg" in
+    internal|external) MODE="$arg" ;;
+    --dry-run) DRY_RUN=1 ;;
+    *) echo "Unknown argument: $arg"; echo "Usage: rsync_music <internal|external> [--dry-run]"; exit 1 ;;
+  esac
+done
+
+if [[ -z "$MODE" ]]; then
+  echo "Usage: rsync_music <internal|external> [--dry-run]"
+  exit 1
+fi
+
+# ── External drive check ──────────────────────────────────────────────────────
+if [[ "$MODE" == "external" && ! -d "$BASE_EXTERNAL" ]]; then
+  echo "ERROR: External drive not mounted at $BASE_EXTERNAL — aborting."
+  exit 1
+fi
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+LOG_FILE="$HOME/Logs/rsync/sync_music_${MODE}.log"
+mkdir -p "$HOME/Logs/rsync"
+
+echo "════════ $(date '+%Y-%m-%d %H:%M:%S') ════════" > "$LOG_FILE"
+
+# ── rsync options ─────────────────────────────────────────────────────────────
+RSYNC_OPTS=(
+  -a
+  --no-owner
+  --no-group
+  --delete
+  --crtimes
+  --human-readable
+  --info=progress2
+  --stats
+  --mkpath
+  --exclude=".DS_Store"
+  --exclude="Desktop.ini"
+  --log-file="$LOG_FILE"
+  --log-file-format=""
+)
+
+if (( DRY_RUN )); then
+  RSYNC_OPTS+=(--dry-run)
+  echo "*** DRY RUN — no files will be changed ***"
+  echo
+fi
+
+echo "Logging to: $LOG_FILE"
+echo
+
+# ── Shared sync function ──────────────────────────────────────────────────────
+FAILED=()
+
+run_sync() {
+  local label="$1" src="$2" dst="$3"
+  shift 3
+
+  echo "" >> "$LOG_FILE"
+  echo "── $label" >> "$LOG_FILE"
+  echo "   $src" >> "$LOG_FILE"
+  echo "   → $dst" >> "$LOG_FILE"
+
+  echo "──────────────────────────────────────────"
+  echo "[$label]"
+  echo "  $src"
+  echo "  → $dst"
+  echo
+
+  if [[ ! -d "$src" ]]; then
+    echo "   SKIPPED — source does not exist" >> "$LOG_FILE"
+    echo "  SKIPPED — source does not exist"
+    echo
+    return
+  fi
+
+  if ! rsync "${RSYNC_OPTS[@]}" "$@" "$src/" "$dst/"; then
+    echo "  FAILED — see log for details"
+    FAILED+=("$label")
+  fi
+  echo
+}
+
+# ── Internal tasks ────────────────────────────────────────────────────────────
+if [[ "$MODE" == "internal" ]]; then
+
+  # ── Presets: DMGAudio ──────────────────────────────────────────────────────
+  run_sync \
+    "Presets - DMGAudio" \
+    "/Library/Application Support/DMGAudio" \
+    "$DEST_INTERNAL/Presets/DMGAudio"
+
+  # ── Presets: Third-Party (~/Library/Audio/Presets) ────────────────────────
+  run_sync \
+    "Presets - Third-Party" \
+    "$HOME/Library/Audio/Presets" \
+    "$DEST_INTERNAL/Presets/Third-Party"
+
+  # ── Presets: Toontrack ────────────────────────────────────────────────────
+  run_sync \
+    "Presets - Toontrack" \
+    "$HOME/Documents/Toontrack" \
+    "$DEST_INTERNAL/Presets/Toontrack"
+
+  # ── Presets: Xfer Nerve (excludes Wav/ and factory f_* folders) ───────────
+  run_sync \
+    "Presets - Xfer - Nerve" \
+    "$HOME/Documents/MySamples/NerveData" \
+    "$DEST_INTERNAL/Presets/Xfer/Nerve" \
+    --exclude="Wav/" \
+    --exclude="System/" \
+    --exclude="f_*/" \
+    --exclude="*.wav" \
+    --exclude="*.wave" \
+    --exclude="*.flac" \
+    --exclude="*.png"
+
+  # ── Presets: Xfer Serum 2 (excludes factory sample/wavetable folders) ─────
+  run_sync \
+    "Presets - Xfer - Serum 2" \
+    "/Library/Audio/Presets/Xfer Records/Serum 2 Presets" \
+    "$DEST_INTERNAL/Presets/Xfer/Serum 2" \
+    --exclude="Multisamples/" \
+    --exclude="Samples/" \
+    --exclude="Tables/" \
+    --exclude="Impulses/" \
+    --exclude="Skins/" \
+    --exclude="*.wav" \
+    --exclude="*.wave" \
+    --exclude="*.flac" \
+    --exclude="*.png"
+
+  # ── UA AppConfig: Prefs (Luna plist + LUNAPrefs.json only) ───────────────
+  run_sync \
+    "UA - AppConfig - Prefs" \
+    "$HOME/Library/Preferences" \
+    "$DEST_INTERNAL/Luna/config/prefs" \
+    --include="com.uaudio.luna.plist" \
+    --include="Universal Audio/" \
+    --include="Universal Audio/LUNAPrefs.json" \
+    --exclude="*"
+
+  # ── UA AppConfig: Workspace (Plug-In Icons + selective workspace files) ───
+  # workspace/ contains sessions/ (LUNA project data) excluded here — only
+  # cloud_prefs.json, midi_devices.json, and preferences/ are config.
+  run_sync \
+    "UA - AppConfig - Workspace" \
+    "$HOME/Library/Application Support/Universal Audio" \
+    "$DEST_INTERNAL/Luna/config/workspace" \
+    --include="Plug-In Icons/" \
+    --include="Plug-In Icons/**" \
+    --include="workspace/" \
+    --include="workspace/cloud_prefs.json" \
+    --include="workspace/midi_devices.json" \
+    --include="workspace/preferences/" \
+    --include="workspace/preferences/**" \
+    --exclude="*"
+
+  # ── UA: User data ─────────────────────────────────────────────────────────
+  run_sync \
+    "UA - User" \
+    "$HOME/Documents/Universal Audio" \
+    "$DEST_INTERNAL/Luna/usr"
+
+fi
+
+# ── External tasks ────────────────────────────────────────────────────────────
+if [[ "$MODE" == "external" ]]; then
+
+  run_sync \
+    "External - MyMusic" \
+    "$BASE_INTERNAL/MyMusic" \
+    "$DEST_EXTERNAL/MyMusic"
+
+  run_sync \
+    "External - MyPreferences" \
+    "$BASE_INTERNAL/MyPreferences" \
+    "$DEST_EXTERNAL/MyPreferences"
+
+  run_sync \
+    "External - MySamples" \
+    "$BASE_INTERNAL/MySamples" \
+    "$DEST_EXTERNAL/MySamples"
+
+fi
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+echo "" >> "$LOG_FILE"
+echo "════════════════════════════════════════" >> "$LOG_FILE"
+if (( ${#FAILED[@]} > 0 )); then
+  echo "Result: completed with errors" >> "$LOG_FILE"
+  for task in "${FAILED[@]}"; do
+    echo "   ✗ $task" >> "$LOG_FILE"
+  done
+else
+  echo "Result: all tasks succeeded" >> "$LOG_FILE"
+fi
+echo "Finished: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
+
+echo "══════════════════════════════════════════"
+if (( ${#FAILED[@]} > 0 )); then
+  echo "${(C)MODE} sync completed with errors. Failed tasks:"
+  for task in "${FAILED[@]}"; do
+    echo "  ✗ $task"
+  done
+  echo "Log: $LOG_FILE"
+  exit 1
+else
+  echo "${(C)MODE} sync complete — all tasks succeeded."
+  echo "Log: $LOG_FILE"
+fi
