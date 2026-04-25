@@ -16,19 +16,19 @@ case "${1:-}" in
     shift
     for arg in "$@"; do
       case "$arg" in
-        local|volume) MODE="$arg" ;;
+        local|external) MODE="$arg" ;;
         --dry-run) DRY_RUN=1 ;;
-        *) echo "Unknown argument: $arg"; echo "Usage: rsync-music run <local|volume> [--dry-run]"; exit 1 ;;
+        *) echo "Unknown argument: $arg"; echo "Usage: rsync-music run <local|external> [--dry-run]"; exit 1 ;;
       esac
     done
 
     if [[ -z "$MODE" ]]; then
-      echo "Usage: rsync-music run <local|volume> [--dry-run]"
+      echo "Usage: rsync-music run <local|external> [--dry-run]"
       exit 1
     fi
 
     # ── External drive check ────────────────────────────────────────────────────
-    if [[ "$MODE" == "volume" && ! -d "$BASE_EXTERNAL" ]]; then
+    if [[ "$MODE" == "external" && ! -d "$BASE_EXTERNAL" ]]; then
       echo "ERROR: External drive not mounted at $BASE_EXTERNAL — aborting."
       exit 1
     fi
@@ -117,12 +117,12 @@ case "${1:-}" in
 
     fi
 
-    # ── Volume tasks ─────────────────────────────────────────────────────────────
-    if [[ "$MODE" == "volume" ]]; then
+    # ── External tasks ───────────────────────────────────────────────────────────
+    if [[ "$MODE" == "external" ]]; then
 
-      run_sync "Volume - MyMusic"       "$BASE_INTERNAL/MyMusic"       "$DEST_EXTERNAL/MyMusic"
-      run_sync "Volume - MyPreferences" "$BASE_INTERNAL/MyPreferences" "$DEST_EXTERNAL/MyPreferences"
-      run_sync "Volume - MySamples"     "$BASE_INTERNAL/MySamples"     "$DEST_EXTERNAL/MySamples"
+      run_sync "External - MyMusic"       "$BASE_INTERNAL/MyMusic"       "$DEST_EXTERNAL/MyMusic"
+      run_sync "External - MyPreferences" "$BASE_INTERNAL/MyPreferences" "$DEST_EXTERNAL/MyPreferences"
+      run_sync "External - MySamples"     "$BASE_INTERNAL/MySamples"     "$DEST_EXTERNAL/MySamples"
 
     fi
 
@@ -136,18 +136,16 @@ case "${1:-}" in
     echo "Syncs music production files to a local backup or external volume."
     echo ""
     echo "Commands:"
-    echo "  run <local|volume>    Execute the sync for the given mode"
-    echo "  --help                Show this help message"
+    echo "  run         Execute the sync either locally or to an external volume"
+    echo "  --help      Show this help message"
     echo ""
-    echo "Modes:"
-    echo "  local     Back up presets and UA config to ~/Music/MyPreferences"
+    echo "Run Modes:"
+    echo "  local       Back up presets and UA config to ~/Music/MyPreferences"
     echo "              - DMGAudio, Third-Party, Toontrack, Xfer (Nerve, Serum 2) presets"
     echo "              - Universal Audio AppConfig (prefs, workspace) and user data"
-    echo "  volume    Back up music folders to /Volumes/Backup-External"
-    echo "              - MyMusic, MyPreferences, MySamples"
-    echo ""
-    echo "Options for run:"
-    echo "  --dry-run    Preview changes without writing any files"
+    echo "  external    Back up music folders to /Volumes/Backup-External"
+    echo "              - MyMusic, MyPreferences, and MySamples"
+    echo "  --dry-run   Preview changes without writing any files"
     echo ""
     echo "Log: ~/Logs/rsync/sync_music_<mode>.log"
     ;;
