@@ -1,0 +1,27 @@
+#!/bin/zsh
+set -euo pipefail
+
+# install homebrew if not already installed
+if ! command -v brew &>/dev/null; then
+  echo "Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  # add brew to PATH for Apple Silicon or Intel
+  if [[ -f /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -f /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+else
+  echo "Homebrew already installed."
+fi
+
+# validate global brewfile exists
+if [[ -z "${HOMEBREW_BUNDLE_FILE_GLOBAL:-}" ]] || [[ ! -f "$HOMEBREW_BUNDLE_FILE_GLOBAL" ]]; then
+  echo "Error: Global Brewfile not found. Set HOMEBREW_BUNDLE_FILE_GLOBAL or place one at ~/.Brewfile"
+  exit 1
+fi
+
+brew bundle install --global --cleanup
+
+echo "Brew setup complete."
