@@ -1,0 +1,86 @@
+#!/usr/bin/env zsh
+# Shared helpers for rsync-docs and rsync-music.
+# Source after setting LOG_FILE and DRY_RUN.
+
+FAILED=()
+
+build_rsync_opts() {
+  RSYNC_OPTS=(
+    -a
+    --no-owner
+    --no-group
+    --delete
+    --crtimes
+    --human-readable
+    --info=progress2
+    --stats
+    --mkpath
+    --exclude=".DS_Store"
+    --exclude="Desktop.ini"
+    --log-file="$LOG_FILE"
+    --log-file-format=""
+  )
+  if (( DRY_RUN )); then
+    RSYNC_OPTS+=(--dry-run)
+    echo "*** DRY RUN — no files will be changed ***"
+    echo
+  fi
+}
+
+run_sync() {
+  local label="$1" src="$2" dst="$3"
+  shift 3
+
+  echo "" >> "$LOG_FILE"
+  echo "── $label" >> "$LOG_FILE"
+  echo "   $src" >> "$LOG_FILE"
+  echo "   → $dst" >> "$LOG_FILE"
+
+  echo "──────────────────────────────────────────"
+  echo "[$label]"
+  echo "  $src"
+  echo "  → $dst"
+  echo
+
+  if [[ ! -d "$src" ]]; then
+    echo "   SKIPPED — source does not exist" >> "$LOG_FILE"
+    echo "  SKIPPED — source does not exist"
+    echo
+    return
+  fi
+
+  if ! rsync "${RSYNC_OPTS[@]}" "$@" "$src/" "$dst/"; then
+    echo "  FAILED — see log for details"
+    FAILED+=("$label")
+  fi
+  echo
+}
+
+print_summary() {
+  local label="$1"
+
+  echo "" >> "$LOG_FILE"
+  echo "════════════════════════════════════════" >> "$LOG_FILE"
+  if (( ${#FAILED[@]} > 0 )); then
+    echo "Result: completed with errors" >> "$LOG_FILE"
+    for task in "${FAILED[@]}"; do
+      echo "   ✗ $task" >> "$LOG_FILE"
+    done
+  else
+    echo "Result: all tasks succeeded" >> "$LOG_FILE"
+  fi
+  echo "Finished: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
+
+  echo "══════════════════════════════════════════"
+  if (( ${#FAILED[@]} > 0 )); then
+    echo "$label sync completed with errors. Failed tasks:"
+    for task in "${FAILED[@]}"; do
+      echo "  ✗ $task"
+    done
+    echo "Log: $LOG_FILE"
+    return 1
+  else
+    echo "$label sync complete — all tasks succeeded."
+    echo "Log: $LOG_FILE"
+  fi
+}

@@ -1,0 +1,216 @@
+#!/bin/zsh
+set -uo pipefail
+
+# ── help ──────────────────────────────────────────────────────────────────────
+
+usage() {
+  cat <<'EOF'
+Usage: toggle_audio <flag> <on|off>
+
+Flags:
+  --login on|off     Enable or disable auto-start at login
+                     (LaunchAgents, LaunchDaemons, and Login Items)
+  --running on|off   Start or kill audio software processes right now
+  --help             Show this message
+
+Apps managed:
+  UA Connect · UAD Console · UAD Meter & Control Panel
+  SoundID Reference · Toontrack Product Manager · iLok License Manager
+EOF
+}
+
+# ── args ──────────────────────────────────────────────────────────────────────
+
+if [[ $# -eq 0 || ${1:-} == "--help" ]]; then
+  usage; exit 0
+fi
+
+flag=${1:-}
+state=${2:-}
+
+if [[ $flag != "--login" && $flag != "--running" ]]; then
+  echo "Error: unknown flag '$flag'" >&2; usage >&2; exit 1
+fi
+if [[ $state != "on" && $state != "off" ]]; then
+  echo "Error: expected on|off, got '$state'" >&2; usage >&2; exit 1
+fi
+
+errors=0
+
+# ── data ──────────────────────────────────────────────────────────────────────
+
+plist_keywords=(uaudio sonarworks soundid toontrack paceap)
+
+# plist labels by context (system labels need sudo for start/stop)
+typeset -a system_labels=(
+  com.sonarworks.soundid.reference.systemwide.ipc_proxy
+  com.uaudio.bsd.helper
+  com.uaudio.UAD2KextLoader
+  com.toontrack.installer.helper
+  com.paceap.eden.licensed
+)
+typeset -a user_labels=(
+  com.uaudio.ua_mixer_engine
+  com.uaudio.uad-meter
+  com.paceap.eden.licensed.agent
+)
+
+# GUI apps — paths and matching process names (parallel arrays, same order)
+typeset -a app_paths=(
+  "/Applications/UA Connect.app"
+  "/Applications/Universal Audio/UAD Console.app"
+  "/Applications/Universal Audio/UAD Meter & Control Panel.app"
+  "/Applications/SoundID Reference.app"
+  "/Applications/Toontrack/Toontrack Product Manager.app"
+  "/Applications/iLok License Manager.app"
+)
+typeset -a app_names=(
+  "UA Connect"
+  "UAD Console"
+  "UAD Meter & Control Panel"
+  "SoundID Reference"
+  "Toontrack Product Manager"
+  "iLok License Manager"
+)
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+find_plists() {
+  for dir in "$@"; do
+    [[ -d $dir ]] || continue
+    for plist in $dir/*.plist(N); do
+      local name=${plist:t:r:l}
+      for kw in $plist_keywords; do
+        if [[ $name == *$kw* ]]; then print -- "$plist"; break; fi
+      done
+    done
+  done
+}
+
+app_is_running() {
+  osascript -e "tell application \"System Events\" to (count of (processes whose name is \"$1\")) > 0" 2>/dev/null | grep -q true
+}
+
+# ── --login ───────────────────────────────────────────────────────────────────
+
+startup() {
+  local action=$1
+  typeset -a sys_plists=() usr_plists=()
+
+  while IFS= read -r p; do sys_plists+=("$p"); done \
+    < <(find_plists /Library/LaunchAgents /Library/LaunchDaemons)
+  while IFS= read -r p; do usr_plists+=("$p"); done \
+    < <(find_plists "$HOME/Library/LaunchAgents")
+
+  (( ${#sys_plists} > 0 )) && sudo -v
+
+  echo "── launch agents / daemons ──"
+  for plist in ${(u)sys_plists}; do
+    local label=${plist:t:r}
+    if [[ $action == "off" ]]; then
+      sudo launchctl unload -w "$plist" 2>/dev/null \
+        && echo "  disabled  $label" \
+        || { echo "  failed    $label" >&2; errors=$(( errors + 1 )); }
+    else
+      sudo launchctl load -w "$plist" 2>/dev/null \
+        && echo "  enabled   $label" \
+        || { echo "  failed    $label" >&2; errors=$(( errors + 1 )); }
+    fi
+  done
+  for plist in ${(u)usr_plists}; do
+    local label=${plist:t:r}
+    if [[ $action == "off" ]]; then
+      launchctl unload -w "$plist" 2>/dev/null \
+        && echo "  disabled  $label" \
+        || { echo "  failed    $label" >&2; errors=$(( errors + 1 )); }
+    else
+      launchctl load -w "$plist" 2>/dev/null \
+        && echo "  enabled   $label" \
+        || { echo "  failed    $label" >&2; errors=$(( errors + 1 )); }
+    fi
+  done
+
+  echo ""
+  echo "── login items ──"
+  for app_path in $app_paths; do
+    [[ -d $app_path ]] || continue
+    local label=${app_path:t:r}
+    if [[ $action == "off" ]]; then
+      osascript -e "tell application \"System Events\" to delete (every login item whose path is \"$app_path\")" 2>/dev/null
+      echo "  removed   $label"
+    else
+      local existing
+      existing=$(osascript -e "tell application \"System Events\" to get path of every login item" 2>/dev/null)
+      if [[ $existing == *"$app_path"* ]]; then
+        echo "  already   $label"
+      else
+        osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app_path\", hidden:false}" 2>/dev/null
+        echo "  added     $label"
+      fi
+    fi
+  done
+}
+
+# ── --running ─────────────────────────────────────────────────────────────────
+
+running() {
+  local action=$1
+
+  if [[ $action == "off" ]]; then
+    echo "── quitting apps ──"
+    for i in {1..${#app_names}}; do
+      local name=${app_names[$i]}
+      if app_is_running "$name"; then
+        osascript -e "tell application \"$name\" to quit" 2>/dev/null \
+          && echo "  quit      $name" \
+          || { echo "  failed    $name" >&2; errors=$(( errors + 1 )); }
+      else
+        echo "  not running  $name"
+      fi
+    done
+
+    echo ""
+    echo "── stopping daemons ──"
+    (( ${#system_labels} > 0 )) && sudo -v
+    for label in $system_labels; do
+      sudo launchctl stop "$label" 2>/dev/null \
+        && echo "  stopped   $label" \
+        || echo "  skipped   $label"
+    done
+    for label in $user_labels; do
+      launchctl stop "$label" 2>/dev/null \
+        && echo "  stopped   $label" \
+        || echo "  skipped   $label"
+    done
+
+  else  # on
+    echo "── starting daemons ──"
+    (( ${#system_labels} > 0 )) && sudo -v
+    for label in $system_labels; do
+      sudo launchctl start "$label" 2>/dev/null \
+        && echo "  started   $label" \
+        || echo "  skipped   $label"
+    done
+    for label in $user_labels; do
+      launchctl start "$label" 2>/dev/null \
+        && echo "  started   $label" \
+        || echo "  skipped   $label"
+    done
+
+    echo ""
+    echo "── opening apps ──"
+    for app_path in $app_paths; do
+      [[ -d $app_path ]] || continue
+      open "$app_path" 2>/dev/null \
+        && echo "  opened    ${app_path:t:r}" \
+        || { echo "  failed    ${app_path:t:r}" >&2; errors=$(( errors + 1 )); }
+    done
+  fi
+}
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+[[ $flag == "--login" ]] && startup $state
+[[ $flag == "--running" ]] && running $state
+
+exit $errors

@@ -1,0 +1,54 @@
+#!/bin/zsh
+set -euo pipefail
+
+require_brewfile() {
+  if [[ ! -f "${HOMEBREW_BUNDLE_FILE_GLOBAL:-}" ]]; then
+    echo "Error: Global Brewfile not found at ${HOMEBREW_BUNDLE_FILE_GLOBAL:-<unset>}"
+    exit 1
+  fi
+}
+
+case "${1:-}" in
+  --help)
+    echo "Usage: brew-util <command>"
+    echo ""
+    echo "Commands:"
+    echo "  run       Update brew, upgrade packages from global Brewfile, run doctor"
+    echo "  init      Install Homebrew and all packages from global Brewfile"
+    echo "  save      Dump current installations to global Brewfile"
+    echo "  --help    Show this help message"
+    ;;
+
+  init)
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    echo "Brew installed."
+    brew bundle install --global --cleanup --verbose
+    echo "Brew packages installed."
+    ;;
+
+  run)
+    require_brewfile
+    brew update --force
+    brew autoremove
+    brew bundle install --global --cleanup --verbose
+    brew doctor || true
+    echo "Brew update complete."
+    ;;
+
+  save)
+    require_brewfile
+    brew bundle dump --global --force --no-vscode --verbose
+    echo "Brew packages saved to $HOMEBREW_BUNDLE_FILE_GLOBAL"
+    ;;
+
+  "")
+    echo "Usage: brew-util <command>"
+    echo "Run 'brew-util --help' for available commands."
+    ;;
+
+  *)
+    echo "Unknown command: $1"
+    echo "Run 'brew-util --help' for available commands."
+    exit 1
+    ;;
+esac

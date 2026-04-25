@@ -1,0 +1,165 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+source "${0:A:h}/lib-rsync"
+
+BASE_INTERNAL=$HOME/Music
+BASE_EXTERNAL="/Volumes/Backup-External"
+
+DEST_INTERNAL=$BASE_INTERNAL/MyPreferences
+DEST_EXTERNAL="$BASE_EXTERNAL"
+
+case "${1:-}" in
+  run)
+    MODE=""
+    DRY_RUN=0
+    shift
+    for arg in "$@"; do
+      case "$arg" in
+        local|volume) MODE="$arg" ;;
+        --dry-run) DRY_RUN=1 ;;
+        *) echo "Unknown argument: $arg"; echo "Usage: rsync-music run <local|volume> [--dry-run]"; exit 1 ;;
+      esac
+    done
+
+    if [[ -z "$MODE" ]]; then
+      echo "Usage: rsync-music run <local|volume> [--dry-run]"
+      exit 1
+    fi
+
+    # ── External drive check ────────────────────────────────────────────────────
+    if [[ "$MODE" == "volume" && ! -d "$BASE_EXTERNAL" ]]; then
+      echo "ERROR: External drive not mounted at $BASE_EXTERNAL — aborting."
+      exit 1
+    fi
+
+    # ── Logging ─────────────────────────────────────────────────────────────────
+    LOG_FILE="$HOME/Logs/rsync/sync_music_${MODE}.log"
+    mkdir -p "$HOME/Logs/rsync"
+    echo "════════ $(date '+%Y-%m-%d %H:%M:%S') ════════" > "$LOG_FILE"
+
+    build_rsync_opts
+    echo "Logging to: $LOG_FILE"
+    echo
+
+    # ── Local tasks ──────────────────────────────────────────────────────────────
+    if [[ "$MODE" == "local" ]]; then
+
+      run_sync \
+        "Presets - DMGAudio" \
+        "/Library/Application Support/DMGAudio" \
+        "$DEST_INTERNAL/Presets/DMGAudio"
+
+      run_sync \
+        "Presets - Third-Party" \
+        "$HOME/Library/Audio/Presets" \
+        "$DEST_INTERNAL/Presets/Third-Party"
+
+      run_sync \
+        "Presets - Toontrack" \
+        "$HOME/Documents/Toontrack" \
+        "$DEST_INTERNAL/Presets/Toontrack"
+
+      run_sync \
+        "Presets - Xfer - Nerve" \
+        "$HOME/Documents/MySamples/NerveData" \
+        "$DEST_INTERNAL/Presets/Xfer/Nerve" \
+        --exclude="Wav/" \
+        --exclude="System/" \
+        --exclude="f_*/" \
+        --exclude="*.wav" \
+        --exclude="*.wave" \
+        --exclude="*.flac" \
+        --exclude="*.png"
+
+      run_sync \
+        "Presets - Xfer - Serum 2" \
+        "/Library/Audio/Presets/Xfer Records/Serum 2 Presets" \
+        "$DEST_INTERNAL/Presets/Xfer/Serum 2" \
+        --exclude="Multisamples/" \
+        --exclude="Samples/" \
+        --exclude="Tables/" \
+        --exclude="Impulses/" \
+        --exclude="Skins/" \
+        --exclude="*.wav" \
+        --exclude="*.wave" \
+        --exclude="*.flac" \
+        --exclude="*.png"
+
+      run_sync \
+        "UA - AppConfig - Prefs" \
+        "$HOME/Library/Preferences" \
+        "$DEST_INTERNAL/Luna/config/prefs" \
+        --include="com.uaudio.luna.plist" \
+        --include="Universal Audio/" \
+        --include="Universal Audio/LUNAPrefs.json" \
+        --exclude="*"
+
+      # workspace/ contains sessions/ (LUNA project data) excluded here — only
+      # cloud_prefs.json, midi_devices.json, and preferences/ are config.
+      run_sync \
+        "UA - AppConfig - Workspace" \
+        "$HOME/Library/Application Support/Universal Audio" \
+        "$DEST_INTERNAL/Luna/config/workspace" \
+        --include="Plug-In Icons/" \
+        --include="Plug-In Icons/**" \
+        --include="workspace/" \
+        --include="workspace/cloud_prefs.json" \
+        --include="workspace/midi_devices.json" \
+        --include="workspace/preferences/" \
+        --include="workspace/preferences/**" \
+        --exclude="*"
+
+      run_sync \
+        "UA - User" \
+        "$HOME/Documents/Universal Audio" \
+        "$DEST_INTERNAL/Luna/usr"
+
+    fi
+
+    # ── Volume tasks ─────────────────────────────────────────────────────────────
+    if [[ "$MODE" == "volume" ]]; then
+
+      run_sync "Volume - MyMusic"       "$BASE_INTERNAL/MyMusic"       "$DEST_EXTERNAL/MyMusic"
+      run_sync "Volume - MyPreferences" "$BASE_INTERNAL/MyPreferences" "$DEST_EXTERNAL/MyPreferences"
+      run_sync "Volume - MySamples"     "$BASE_INTERNAL/MySamples"     "$DEST_EXTERNAL/MySamples"
+
+    fi
+
+    # ── Summary ──────────────────────────────────────────────────────────────────
+    print_summary "${(C)MODE}"
+    ;;
+
+  --help)
+    echo "Usage: rsync-music <command>"
+    echo ""
+    echo "Syncs music production files to a local backup or external volume."
+    echo ""
+    echo "Commands:"
+    echo "  run <local|volume>    Execute the sync for the given mode"
+    echo "  --help                Show this help message"
+    echo ""
+    echo "Modes:"
+    echo "  local     Back up presets and UA config to ~/Music/MyPreferences"
+    echo "              - DMGAudio, Third-Party, Toontrack, Xfer (Nerve, Serum 2) presets"
+    echo "              - Universal Audio AppConfig (prefs, workspace) and user data"
+    echo "  volume    Back up music folders to /Volumes/Backup-External"
+    echo "              - MyMusic, MyPreferences, MySamples"
+    echo ""
+    echo "Options for run:"
+    echo "  --dry-run    Preview changes without writing any files"
+    echo ""
+    echo "Log: ~/Logs/rsync/sync_music_<mode>.log"
+    ;;
+
+  "")
+    echo "Usage: rsync-music <command>"
+    echo "Run 'rsync-music --help' for available commands."
+    ;;
+
+  *)
+    echo "Unknown command: $1"
+    echo "Run 'rsync-music --help' for available commands."
+    exit 1
+    ;;
+esac
