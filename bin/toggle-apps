@@ -172,6 +172,33 @@ running() {
       fi
     done
 
+    # Stop any apps still alive after the graceful quit. GUI apps registered with
+    # launchd must be booted out — SIGKILL alone causes an immediate respawn.
+    sleep 1
+    echo ""
+    echo "── killing stragglers ──"
+    local uid=$(id -u)
+    for i in {1..${#app_paths}}; do
+      local app_path=${app_paths[$i]}
+      local name=${app_names[$i]}
+      [[ -d $app_path ]] || continue
+      pgrep -qf "$app_path" 2>/dev/null || continue
+
+      local bundle_id label
+      bundle_id=$(defaults read "$app_path/Contents/Info" CFBundleIdentifier 2>/dev/null)
+      if [[ -n $bundle_id ]]; then
+        label=$(launchctl list 2>/dev/null | awk -v b="$bundle_id" '$3 ~ b {print $3; exit}')
+      fi
+
+      if [[ -n ${label:-} ]]; then
+        launchctl bootout "gui/$uid/$label" 2>/dev/null \
+          && echo "  booted out  $name" \
+          || { pkill -9 -f "$app_path" 2>/dev/null; echo "  killed      $name"; }
+      else
+        pkill -9 -f "$app_path" 2>/dev/null && echo "  killed      $name" || true
+      fi
+    done
+
     echo ""
     echo "── stopping daemons ──"
     (( ${#system_labels} > 0 )) && sudo -v

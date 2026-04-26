@@ -18,15 +18,18 @@ Use the following command to create symlinks for various files (e.g. zsh, ghostt
 install_symlinks
 ```
 
-## Maintain brew
-Use the following command to update brew, cleanup unused packages, backup global brewfile, upgrade packages, identify config warnings.
+## brew-util cli
+Use the brew-util cli to update brew, cleanup unused packages, backup global brewfile, upgrade packages, identify config warnings.
 ```zsh
-maintain_brew
+brew-util init
+brew-util run
+brew-util save
 ```
 
-## Sync data
-Use the following command to run rsync (including a flag for a dry sync) for music and data to an internal or external volume
+## rsync cli
+Use the rsync utilities run rsync (including a flag for a dry sync) for music and data to a local or external volume
 ```zsh
-rsync_music internal --dry-run
-rsync_docs external
+rsync_music run local --dry-run
+rsync_music run external
+rsync_docs run
 ```
