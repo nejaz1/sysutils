@@ -1,0 +1,166 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+SCRIPT_DIR="${0:A:h}"
+CONFIG="$SCRIPT_DIR/../config/symlink.yaml"
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+expand_path() {
+  echo "${1/#\~/$HOME}"
+}
+
+require_yq() {
+  if ! command -v yq &>/dev/null; then
+    echo "ERROR: yq is required. Install with: brew install yq"
+    exit 1
+  fi
+}
+
+validate_env() {
+  local env="$1"
+  if [[ $(yq "has(\"$env\")" "$CONFIG") != "true" ]]; then
+    echo "ERROR: Unknown env '$env'. Check $CONFIG for available envs."
+    exit 1
+  fi
+}
+
+# ── Usage ────────────────────────────────────────────────────────────────────
+
+usage() {
+  echo "Usage: symlink-util <command> [env] [--dry-run]"
+  echo ""
+  echo "Manages symlinks defined in config/symlink.yaml."
+  echo ""
+  echo "Commands:"
+  echo "  install [env]   Create symlinks. Omit env to install all envs."
+  echo "  list            List all configured envs and their items"
+  echo "  --help          Show this help message"
+  echo ""
+  echo "Options:"
+  echo "  --dry-run   Preview changes without creating any symlinks"
+  echo ""
+  echo "Examples:"
+  echo "  symlink-util install"
+  echo "  symlink-util install zsh --dry-run"
+  echo "  symlink-util install ghostty"
+  echo "  symlink-util list"
+  echo ""
+}
+
+# ── Core ─────────────────────────────────────────────────────────────────────
+
+install_env() {
+  local env="$1" item_count label src dst
+  item_count=$(yq ".$env.items | length" "$CONFIG")
+
+  echo "── $env ──────────────────────────────────────────────────────────────────"
+
+  for (( i = 0; i < item_count; i++ )); do
+    label=$(yq -r ".$env.items[$i].label" "$CONFIG")
+    src=$(expand_path "$(yq -r ".$env.items[$i].src" "$CONFIG")")
+    dst=$(expand_path "$(yq -r ".$env.items[$i].dst" "$CONFIG")")
+
+    echo "[$label]"
+    echo "  $src"
+    echo "  → $dst"
+
+    if [[ ! -e "$src" ]]; then
+      echo "  SKIPPED — source does not exist: $src"
+      echo
+      continue
+    fi
+
+    if (( DRY_RUN )); then
+      echo "  (dry-run) would link"
+      echo
+      continue
+    fi
+
+    mkdir -p "${dst:h}"
+    rm -f "$dst"
+    ln -s "$src" "$dst"
+    echo "  linked"
+    echo
+  done
+}
+
+list_envs() {
+  local envs env item_count label src dst
+  envs=$(yq -r 'keys | .[]' "$CONFIG")
+  while IFS= read -r env; do
+    echo "env: $env"
+    item_count=$(yq ".$env.items | length" "$CONFIG")
+    for (( i = 0; i < item_count; i++ )); do
+      label=$(yq -r ".$env.items[$i].label" "$CONFIG")
+      src=$(expand_path "$(yq -r ".$env.items[$i].src" "$CONFIG")")
+      dst=$(expand_path "$(yq -r ".$env.items[$i].dst" "$CONFIG")")
+      echo "  [$label]"
+      echo "    $src → $dst"
+    done
+    echo
+  done <<< "$envs"
+}
+
+# ── Argument parsing ─────────────────────────────────────────────────────────
+
+case "${1:-}" in
+  --help|-h) usage; exit 0 ;;
+  list)
+    require_yq
+    [[ -f "$CONFIG" ]] || { echo "ERROR: Config not found at $CONFIG"; exit 1; }
+    list_envs
+    exit 0
+    ;;
+  install)
+    shift
+    ;;
+  "")
+    usage; exit 1
+    ;;
+  *)
+    echo "Unknown command: $1"
+    echo "Run 'symlink-util --help' for usage."
+    exit 1
+    ;;
+esac
+
+ENV=""
+DRY_RUN=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    --*) echo "Unknown option: $arg"; echo "Run 'symlink-util --help' for usage."; exit 1 ;;
+    *) ENV="$arg" ;;
+  esac
+done
+
+# ── Pre-flight checks ────────────────────────────────────────────────────────
+
+require_yq
+
+if [[ ! -f "$CONFIG" ]]; then
+  echo "ERROR: Config not found at $CONFIG"
+  exit 1
+fi
+
+if [[ -n "$ENV" ]]; then
+  validate_env "$ENV"
+fi
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+if (( DRY_RUN )); then
+  echo "*** DRY RUN — no symlinks will be created ***"
+  echo
+fi
+
+if [[ -n "$ENV" ]]; then
+  install_env "$ENV"
+else
+  envs=$(yq -r 'keys | .[]' "$CONFIG")
+  while IFS= read -r env; do
+    install_env "$env"
+  done <<< "$envs"
+fi

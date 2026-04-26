@@ -1,0 +1,136 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+SCRIPT_DIR="${0:A:h}"
+CONFIG="$SCRIPT_DIR/../config/rsync/rsync.yaml"
+EXTERNAL_DRIVE="/Volumes/Backup-External"
+
+source "$SCRIPT_DIR/../lib/lib-rsync"
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+expand_path() {
+  echo "${1/#\~/$HOME}"
+}
+
+require_yq() {
+  if ! command -v yq &>/dev/null; then
+    echo "ERROR: yq is required. Install with: brew install yq"
+    exit 1
+  fi
+}
+
+validate_dtype_location() {
+  local dtype="$1" location="$2"
+  if [[ $(yq "has(\"$dtype\")" "$CONFIG") != "true" ]]; then
+    echo "ERROR: Unknown dtype '$dtype'. Check $CONFIG for available data types."
+    exit 1
+  fi
+  if [[ $(yq ".$dtype | has(\"$location\")" "$CONFIG") != "true" ]]; then
+    echo "ERROR: Unknown location '$location' for dtype '$dtype'. Check $CONFIG."
+    exit 1
+  fi
+}
+
+# ── Argument parsing ─────────────────────────────────────────────────────────
+
+usage() {
+  echo "Usage: rsync-util <dtype> <location> [--dry-run]"
+  echo ""
+  echo "Runs rsync sync tasks defined in config/rsync/rsync.yaml."
+  echo ""
+  echo "Arguments:"
+  echo "  dtype       Data type to sync (e.g. music, docs), both dtype and location are required"
+  echo "  location    Sync location (e.g. local, external)"
+  echo ""
+  echo "Options:"
+  echo "  --dry-run   Preview changes without writing any files"
+  echo "  --help      Show this help message"
+  echo ""
+  echo "Log: ~/Logs/rsync/sync_<dtype>_<location>.log"
+  echo ""
+  echo "Examples:"
+  echo "  rsync-util music local --dry-run"
+  echo "  rsync-util docs external"
+  echo ""
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage; exit 0
+fi
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: rsync-util <dtype> <location> [--dry-run]"
+  echo "Run 'rsync-util --help' for available commands."
+  exit 1
+fi
+
+DTYPE="$1"
+LOCATION="$2"
+DRY_RUN=0
+shift 2
+
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    *) echo "Unknown argument: $arg"; echo "Run 'rsync-util --help' for usage."; exit 1 ;;
+  esac
+done
+
+# ── Pre-flight checks ────────────────────────────────────────────────────────
+
+require_yq
+
+if [[ ! -f "$CONFIG" ]]; then
+  echo "ERROR: Config not found at $CONFIG"
+  exit 1
+fi
+
+validate_dtype_location "$DTYPE" "$LOCATION"
+
+if [[ "$LOCATION" == "external" && ! -d "$EXTERNAL_DRIVE" ]]; then
+  echo "ERROR: External drive not mounted at $EXTERNAL_DRIVE — aborting."
+  exit 1
+fi
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+
+LOG_FILE="$HOME/Logs/rsync/sync_${DTYPE}_${LOCATION}.log"
+mkdir -p "$HOME/Logs/rsync"
+echo "════════ $(date '+%Y-%m-%d %H:%M:%S') ════════" > "$LOG_FILE"
+
+build_rsync_opts
+echo "Logging to: $LOG_FILE"
+echo
+
+# ── Main loop ────────────────────────────────────────────────────────────────
+
+item_count=$(yq ".$DTYPE.$LOCATION.items | length" "$CONFIG")
+
+for (( i = 0; i < item_count; i++ )); do
+  label=$(yq -r ".$DTYPE.$LOCATION.items[$i].label" "$CONFIG")
+  src=$(expand_path "$(yq -r ".$DTYPE.$LOCATION.items[$i].src" "$CONFIG")")
+  dst=$(expand_path "$(yq -r ".$DTYPE.$LOCATION.items[$i].dst" "$CONFIG")")
+
+  extra_flags=()
+
+  include_count=$(yq ".$DTYPE.$LOCATION.items[$i].includes | length" "$CONFIG")
+  if (( include_count > 0 )); then
+    while IFS= read -r pattern; do
+      extra_flags+=(--include="$pattern")
+    done < <(yq -r ".$DTYPE.$LOCATION.items[$i].includes[]" "$CONFIG")
+  fi
+
+  exclude_count=$(yq ".$DTYPE.$LOCATION.items[$i].excludes | length" "$CONFIG")
+  if (( exclude_count > 0 )); then
+    while IFS= read -r pattern; do
+      extra_flags+=(--exclude="$pattern")
+    done < <(yq -r ".$DTYPE.$LOCATION.items[$i].excludes[]" "$CONFIG")
+  fi
+
+  run_sync "$label" "$src" "$dst" "${extra_flags[@]}"
+done
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+
+print_summary "${(C)DTYPE} ${(C)LOCATION}"

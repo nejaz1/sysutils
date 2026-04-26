@@ -1,0 +1,24 @@
+# Symlink definitions for symlink-util.
+#
+# Structure: <env> > <item> > <src> <dst>
+# Paths may use ~ (expanded to $HOME at runtime).
+
+zsh:
+  items:
+    - label: "zsh - .zprofile"
+      src: ~/Developer/sysutils/config/zsh/.zprofile
+      dst: ~/.zprofile
+
+    - label: "zsh - .zshenv"
+      src: ~/Developer/sysutils/config/zsh/.zshenv
+      dst: ~/.zshenv
+
+    - label: "zsh - .zshrc"
+      src: ~/Developer/sysutils/config/zsh/.zshrc
+      dst: ~/.zshrc
+
+ghostty:
+  items:
+    - label: "ghostty - config.ghostty"
+      src: ~/Developer/sysutils/config/ghostty/config.ghostty
+      dst: ~/Library/Application Support/com.mitchellh.ghostty/config.ghostty
