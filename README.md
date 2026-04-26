@@ -2,8 +2,9 @@
 Personal system utilities, installer scripts, and housekeeping tools.
 
 ## Structure
-- `bin/` — executable scripts added to PATH (e.g. maintain_brew)
-- `config/` - configuration files for terminal and system environments and applications (e.g. zsh, ghostty)
+- `bin/` — executable scripts added to PATH
+- `config/` — YAML configuration files and application configs (zsh, ghostty, rsync, symlink)
+- `lib/` — shared library functions sourced by utilities
 
 ## Setup
 Clone and add to PATH:
@@ -12,24 +13,37 @@ git clone git@github.com:nejaz1/sysutils.git ~/Developer/sysutils
 chmod +x ~/Developer/sysutils/bin/*
 ```
 
-## Creating symlinks
-Use the following command to create symlinks for various files (e.g. zsh, ghostty).
+## symlink-util
+Manages symlinks for terminal and application configs defined in `config/symlink.yaml`.
+
 ```zsh
-install_symlinks
+symlink-util install              # Install all configured symlinks
+symlink-util install zsh          # Install zsh config symlinks only
+symlink-util install ghostty      # Install ghostty config symlinks only
+symlink-util install zsh --dry-run
+symlink-util list                 # Show all configured environments and paths
+symlink-util --help
 ```
 
-## brew-util cli
-Use the brew-util cli to update brew, cleanup unused packages, backup global brewfile, upgrade packages, identify config warnings.
+## brew-util
+Manages Homebrew installations using global Brewfile.
+
 ```zsh
-brew-util init
-brew-util run
-brew-util save
+brew-util init                    # Install Homebrew and packages from Brewfile
+brew-util run                     # Update brew, upgrade packages, run doctor
+brew-util save                    # Dump current installations to global Brewfile
+brew-util --help
 ```
 
-## rsync cli
-Use the rsync utilities run rsync (including a flag for a dry sync) for music and data to a local or external volume
+## rsync-util
+Syncs data defined in `config/rsync/rsync.yaml`. Requires `yq` for YAML parsing.
+
 ```zsh
-rsync_music run local --dry-run
-rsync_music run external
-rsync_docs run
+rsync-util music local            # Sync music presets to local drive
+rsync-util music local --dry-run  # Preview changes without syncing
+rsync-util music external         # Sync music to external backup drive
+rsync-util docs external          # Sync documents to external backup drive
+rsync-util --help
 ```
+
+Logs are written to `~/Logs/rsync/sync_<dtype>_<location>.log`.
