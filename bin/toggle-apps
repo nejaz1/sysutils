@@ -5,17 +5,18 @@ set -uo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: toggle_audio <flag> <on|off>
+Usage: toggle-apps <flag> <on|off>
 
 Flags:
   --login on|off     Enable or disable auto-start at login
                      (LaunchAgents, LaunchDaemons, and Login Items)
-  --running on|off   Start or kill audio software processes right now
+  --running on|off   Start or kill app processes right now
   --help             Show this message
 
 Apps managed:
   UA Connect · UAD Console · UAD Meter & Control Panel
   SoundID Reference · Toontrack Product Manager · iLok License Manager
+  Granola
 EOF
 }
 
@@ -63,6 +64,7 @@ typeset -a app_paths=(
   "/Applications/SoundID Reference.app"
   "/Applications/Toontrack/Toontrack Product Manager.app"
   "/Applications/iLok License Manager.app"
+  "/Applications/Granola.app"
 )
 typeset -a app_names=(
   "UA Connect"
@@ -71,6 +73,7 @@ typeset -a app_names=(
   "SoundID Reference"
   "Toontrack Product Manager"
   "iLok License Manager"
+  "Granola"
 )
 
 # ── helpers ───────────────────────────────────────────────────────────────────
