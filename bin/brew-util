@@ -22,7 +22,7 @@ case "${1:-}" in
   init)
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     echo "Brew installed."
-    brew bundle install --global --cleanup --verbose
+    brew bundle install --global --cleanup
     echo "Brew packages installed."
     ;;
 
@@ -30,14 +30,14 @@ case "${1:-}" in
     require_brewfile
     brew update --force
     brew autoremove
-    brew bundle install --global --cleanup --verbose
+    brew bundle install --global --cleanup
     brew doctor || true
     echo "Brew update complete."
     ;;
 
   save)
     require_brewfile
-    brew bundle dump --global --force --no-vscode --verbose
+    brew bundle dump --global --force --no-vscode
     echo "Brew packages saved to $HOMEBREW_BUNDLE_FILE_GLOBAL"
     ;;
 

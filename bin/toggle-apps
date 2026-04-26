@@ -17,6 +17,12 @@ Apps managed:
   UA Connect · UAD Console · UAD Meter & Control Panel
   SoundID Reference · Toontrack Product Manager · iLok License Manager
   Granola
+
+Examples:
+  toggle-apps --login on
+  toggle-apps --running off
+  toggle-apps --help
+  
 EOF
 }
 
