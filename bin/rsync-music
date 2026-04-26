@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
-source "${0:A:h}/lib-rsync"
+source "${0:A:h}/../lib/lib-rsync"
 
 BASE_INTERNAL=$HOME/Music
 BASE_EXTERNAL="/Volumes/Backup-External"
@@ -10,22 +10,16 @@ DEST_INTERNAL=$BASE_INTERNAL/MyPreferences
 DEST_EXTERNAL="$BASE_EXTERNAL"
 
 case "${1:-}" in
-  run)
-    MODE=""
+  local|external)
+    MODE="$1"
     DRY_RUN=0
     shift
     for arg in "$@"; do
       case "$arg" in
-        local|external) MODE="$arg" ;;
         --dry-run) DRY_RUN=1 ;;
-        *) echo "Unknown argument: $arg"; echo "Usage: rsync-music run <local|external> [--dry-run]"; exit 1 ;;
+        *) echo "Unknown argument: $arg"; echo "Usage: rsync-music <local|external> [--dry-run]"; exit 1 ;;
       esac
     done
-
-    if [[ -z "$MODE" ]]; then
-      echo "Usage: rsync-music run <local|external> [--dry-run]"
-      exit 1
-    fi
 
     # ── External drive check ────────────────────────────────────────────────────
     if [[ "$MODE" == "external" && ! -d "$BASE_EXTERNAL" ]]; then
@@ -136,15 +130,14 @@ case "${1:-}" in
     echo "Syncs music production files to a local backup or external volume."
     echo ""
     echo "Commands:"
-    echo "  run         Execute the sync either locally or to an external volume"
-    echo "  --help      Show this help message"
-    echo ""
-    echo "Run Modes:"
     echo "  local       Back up presets and UA config to ~/Music/MyPreferences"
     echo "              - DMGAudio, Third-Party, Toontrack, Xfer (Nerve, Serum 2) presets"
     echo "              - Universal Audio AppConfig (prefs, workspace) and user data"
     echo "  external    Back up music folders to /Volumes/Backup-External"
     echo "              - MyMusic, MyPreferences, and MySamples"
+    echo "  --help      Show this help message"
+    echo ""
+    echo "Options:"
     echo "  --dry-run   Preview changes without writing any files"
     echo ""
     echo "Log: ~/Logs/rsync/sync_music_<mode>.log"

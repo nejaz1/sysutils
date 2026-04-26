@@ -1,20 +1,20 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
-source "${0:A:h}/lib-rsync"
+source "${0:A:h}/../lib/lib-rsync"
 
 SRC="$HOME/Documents/MyDocs"
 BASE_EXTERNAL="/Volumes/Backup-External"
 DEST="$BASE_EXTERNAL/MyDocs"
 
 case "${1:-}" in
-  run)
+  external)
     DRY_RUN=0
     shift
     for arg in "$@"; do
       case "$arg" in
         --dry-run) DRY_RUN=1 ;;
-        *) echo "Unknown argument: $arg"; echo "Usage: rsync-docs run [--dry-run]"; exit 1 ;;
+        *) echo "Unknown argument: $arg"; echo "Usage: rsync-docs external [--dry-run]"; exit 1 ;;
       esac
     done
 
@@ -44,13 +44,13 @@ case "${1:-}" in
     echo "Usage: rsync-docs <command>"
     echo ""
     echo "Syncs ~/Documents/MyDocs to /Volumes/Backup-External/MyDocs."
-    echo "Requires the external drive to be mounted at /Volumes/Backup-External."
     echo ""
     echo "Commands:"
-    echo "  run         Execute the sync"
+    echo "  external    Back up docs to /Volumes/Backup-External"
+    echo "              Requires the external drive to be mounted at /Volumes/Backup-External."
     echo "  --help      Show this help message"
     echo ""
-    echo "Options for run:"
+    echo "Options:"
     echo "  --dry-run   Preview changes without writing any files"
     echo ""
     echo "Log: ~/Logs/rsync/sync_docs.log"
