@@ -22,3 +22,13 @@ ghostty:
     - label: "ghostty - config.ghostty"
       src: ~/Developer/sysutils/config/ghostty/config.ghostty
       dst: ~/Library/Application Support/com.mitchellh.ghostty/config.ghostty
+
+claude-code:
+  items:
+    - label: "claude-code - CLAUDE.md"
+      src: ~/Models/claude-code/claude-code-template/constitution/CLAUDE.md
+      dst: ~/.claude/CLAUDE.md
+
+    - label: "claude-code - rules"
+      src: ~/Models/claude-code/claude-code-template/constitution/rules
+      dst: ~/.claude/rules

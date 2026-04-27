@@ -13,23 +13,24 @@ case "${1:-}" in
     echo "Usage: brew-util <command>"
     echo ""
     echo "Commands:"
-    echo "  run       Update brew, upgrade packages from global Brewfile, run doctor"
-    echo "  init      Install Homebrew and all packages from global Brewfile"
-    echo "  save      Dump current installations to global Brewfile"
+    echo "  update    Update Brew, upgrade packages from global .Brewfile, run doctor (bre-util save is run automatically)"
+    echo "  install   Install Homebrew and all packages from global Brewfile"
+    echo "  save      Save current Brew packages to global Brewfile"
     echo "  --help    Show this help message"
     ;;
 
-  init)
+  install)
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     echo "Brew installed."
     brew bundle install --global --cleanup
-    echo "Brew packages installed."
+    echo "Packages installed from global Brewfile."
     ;;
 
-  run)
+  update)
     require_brewfile
     brew update --force
     brew autoremove
+    brew-util save
     brew bundle install --global --cleanup
     brew doctor || true
     echo "Brew update complete."

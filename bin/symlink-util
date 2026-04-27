@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
-CONFIG="$SCRIPT_DIR/../config/symlink.yaml"
+CONFIG="$SCRIPT_DIR/../config/symlink/symlink.yaml"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
