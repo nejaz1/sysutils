@@ -13,10 +13,15 @@ case "${1:-}" in
     echo "Usage: brew-util <command>"
     echo ""
     echo "Commands:"
-    echo "  update    Update Brew, upgrade packages from global .Brewfile, run doctor (bre-util save is run automatically)"
+    echo "  list      List all packages in global Brewfile"
+    echo "  update    Update Brew, upgrade packages from global .Brewfile, run doctor (bre-util save is run implicitly)"
     echo "  install   Install Homebrew and all packages from global Brewfile"
     echo "  save      Save current Brew packages to global Brewfile"
     echo "  --help    Show this help message"
+    ;;
+
+  list)
+    brew bundle list -g --all
     ;;
 
   install)
@@ -29,10 +34,10 @@ case "${1:-}" in
   update)
     require_brewfile
     brew update --force
-    brew autoremove
     brew-util save
-    brew bundle install --global --cleanup
+    brew bundle install --global --upgrade --cleanup
     brew doctor || true
+    brew autoremove
     echo "Brew update complete."
     ;;
 
