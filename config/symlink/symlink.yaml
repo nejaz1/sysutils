@@ -26,9 +26,9 @@ ghostty:
 claude-code:
   items:
     - label: "claude-code - CLAUDE.md"
-      src: ~/Models/claude-code/claude-code-template/home-folder/CLAUDE.md
+      src: ~/Models/claude/claude-code-template/home-folder/CLAUDE.md
       dst: ~/.claude/CLAUDE.md
 
     - label: "claude-code - rules"
-      src: ~/Models/claude-code/claude-code-template/home-folder/rules
+      src: ~/Models/claude/claude-code-template/home-folder/rules
       dst: ~/.claude/rules
