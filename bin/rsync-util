@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
-CONFIG="$SCRIPT_DIR/../config/rsync/rsync.yaml"
 EXTERNAL_DRIVE="/Volumes/Backup-External"
+CONFIG="$HOME/Developer/config/rsync/rsync.yaml"
 
 source "$SCRIPT_DIR/../lib/lib-rsync"
 

@@ -35,10 +35,11 @@ case "${1:-}" in
     require_brewfile
     brew update --force
     brew-util save
-    brew bundle install --global --upgrade --cleanup
-    brew doctor || true
-    brew autoremove
+    brew bundle install --global --upgrade --cleanup --quiet
     echo "Brew update complete."
+    brew doctor || true
+    brew autoremove || true
+    echo "Brew maintenance complete."
     ;;
 
   save)
