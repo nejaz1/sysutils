@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
-CONFIG="$HOME/Developer/config/symlink/symlink.yaml"
+CONFIG="$CONFIG_DIR/symlink/symlink.yaml"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
